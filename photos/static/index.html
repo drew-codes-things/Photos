@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#19191c">
+<title>Photo Library</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="Photo Library home">
+    <img src="/static/icon.svg" alt="" width="28" height="28">
+    <span class="brand-name">Photo <span class="brand-accent">Library</span></span>
+  </a>
+  <label class="search">
+    <span class="visually-hidden">Search by file name</span>
+    <input id="search" type="search" placeholder="Search by file name" maxlength="200" autocomplete="off">
+  </label>
+  <button class="icon-btn" type="button" id="filter-toggle" aria-label="Search by date" aria-expanded="false" aria-controls="filters"></button>
+  <label class="btn send upload-btn" id="upload-label">
+    <span class="upload-text">Upload</span>
+    <input id="upload-input" type="file" multiple accept="image/*,video/*,.heic,.heif,.mov,.mkv,.webm,.3gp" class="visually-hidden">
+  </label>
+</header>
+
+<div class="layout">
+  <nav class="sidebar" aria-label="Views">
+    <div class="views">
+      <button class="view-btn" type="button" data-view="timeline">Photos</button>
+      <button class="view-btn" type="button" data-view="favourites">Favourites</button>
+      <button class="view-btn" type="button" data-view="albums">Albums</button>
+      <button class="view-btn" type="button" data-view="bin">Bin</button>
+    </div>
+    <section class="storage" id="storage" aria-label="Disk space">
+      <div class="meter" aria-hidden="true"><span id="storage-bar"></span></div>
+      <p id="storage-library"></p>
+      <p id="storage-disk"></p>
+      <p id="storage-floor" class="faint"></p>
+    </section>
+  </nav>
+
+  <main class="content">
+    <div id="space-banner" class="banner warn" role="alert" hidden></div>
+
+    <form id="filters" class="filters" hidden autocomplete="off">
+      <label>From <input id="date-from" type="date"></label>
+      <label>To <input id="date-to" type="date"></label>
+      <button class="btn ghost" type="button" id="filters-clear">Clear dates</button>
+    </form>
+
+    <div class="heading">
+      <div class="heading-text">
+        <h1 id="view-title">Photos</h1>
+        <span id="view-count" class="faint"></span>
+      </div>
+      <div class="heading-tools">
+        <div class="segmented" role="group" aria-label="Group by" id="group-switch">
+          <button type="button" data-group="day" aria-pressed="true">Days</button>
+          <button type="button" data-group="month" aria-pressed="false">Months</button>
+        </div>
+        <button class="btn ghost" type="button" id="select-toggle" aria-pressed="false">Select</button>
+        <button class="btn ghost" type="button" id="album-new">New album</button>
+        <button class="btn ghost" type="button" id="album-rename" hidden>Rename</button>
+        <button class="btn ghost" type="button" id="album-delete" hidden>Delete album</button>
+        <button class="btn ghost" type="button" id="album-back" hidden>All albums</button>
+      </div>
+    </div>
+
+    <div id="bin-line" class="banner" hidden>
+      <span id="bin-text">Items in the bin are deleted for good after 30 days.</span>
+      <button class="btn" type="button" id="bin-empty">Empty bin</button>
+    </div>
+
+    <div id="albums" class="albums" hidden></div>
+    <div id="timeline" class="timeline"></div>
+    <div id="sentinel" class="sentinel" aria-hidden="true"></div>
+    <p id="loading" class="empty-state" hidden>Loading...</p>
+    <p id="empty-state" class="empty-state" hidden></p>
+  </main>
+</div>
+
+<div id="selection-bar" class="selection-bar" hidden>
+  <span id="selection-count"></span>
+  <span class="spacer"></span>
+  <div id="selection-actions" class="selection-actions"></div>
+  <button class="btn ghost" type="button" id="selection-cancel">Cancel</button>
+</div>
+
+<section id="upload-panel" class="upload-panel" aria-label="Uploads" hidden>
+  <header class="upload-head">
+    <strong id="upload-summary"></strong>
+    <span class="spacer"></span>
+    <button class="icon-btn" type="button" id="upload-collapse" aria-label="Hide the upload list" aria-expanded="true"></button>
+    <button class="icon-btn" type="button" id="upload-close" aria-label="Close the upload list"></button>
+  </header>
+  <div class="upload-total" aria-hidden="true"><span id="upload-total-bar"></span></div>
+  <ul id="upload-list" class="upload-list"></ul>
+  <p class="upload-hint faint">If the connection drops, uploads wait and carry on by themselves. If you closed the page, pick the same files again and they continue where they stopped.</p>
+</section>
+
+<div id="viewer" class="viewer" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
+  <div class="viewer-bar">
+    <button class="icon-btn" type="button" id="viewer-close" aria-label="Close"></button>
+    <div class="viewer-title">
+      <span id="viewer-date"></span>
+      <span id="viewer-name" class="faint"></span>
+    </div>
+    <span class="spacer"></span>
+    <div id="viewer-actions" class="viewer-actions"></div>
+  </div>
+  <div id="viewer-stage" class="viewer-stage"></div>
+  <button class="viewer-nav prev icon-btn" type="button" id="viewer-prev" aria-label="Previous"></button>
+  <button class="viewer-nav next icon-btn" type="button" id="viewer-next" aria-label="Next"></button>
+  <aside id="viewer-info" class="viewer-info" hidden>
+    <dl id="viewer-details"></dl>
+  </aside>
+</div>
+
+<dialog id="album-picker" class="dialog" aria-label="Add to album">
+  <form method="dialog" id="album-picker-form" autocomplete="off">
+    <h2>Add to album</h2>
+    <div id="album-choices" class="album-choices"></div>
+    <label class="field">
+      <span>Or a new album</span>
+      <input id="album-picker-new" maxlength="120" placeholder="Album name">
+    </label>
+    <div class="dialog-actions">
+      <button class="btn ghost" type="button" id="album-picker-cancel">Cancel</button>
+      <button class="btn send" type="submit" id="album-picker-create">Create and add</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="name-dialog" class="dialog" aria-labelledby="name-dialog-title">
+  <form method="dialog" id="name-dialog-form" autocomplete="off">
+    <h2 id="name-dialog-title">Album name</h2>
+    <label class="field">
+      <span class="visually-hidden">Name</span>
+      <input id="name-dialog-input" maxlength="120" required>
+    </label>
+    <div class="dialog-actions">
+      <button class="btn ghost" type="button" id="name-dialog-cancel">Cancel</button>
+      <button class="btn send" type="submit">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

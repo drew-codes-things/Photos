@@ -1,0 +1,23 @@
+[project]
+name = "photos"
+dynamic = ["version"]
+description = "Self-hosted photo and video library, your own free take on Google Photos"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = ["flask==3.1.3", "waitress==3.0.2", "pillow==13.0.0", "pillow-heif==1.8.1"]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1"]
+
+[tool.setuptools.dynamic]
+version = { attr = "photos.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["photos*"]
+
+[tool.setuptools.package-data]
+photos = ["static/*", "static/fonts/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]

@@ -1,0 +1,26 @@
+services:
+  photos:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: photos:local
+    container_name: photos
+    restart: unless-stopped
+    user: "65532:65532"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 2560m
+    pids_limit: 256
+    env_file: /etc/photos/photos.env
+    environment:
+      DATA_DIR: /data
+      BIND_HOST: 0.0.0.0
+      PORT: "8080"
+      TZ: Europe/London
+    volumes:
+      - __DATA_PATH__:/data
+    ports:
+      - "__APP_ADDRESS__:5004:8080"
