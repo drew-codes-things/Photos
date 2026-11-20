@@ -281,13 +281,13 @@ http://keep.example.com {
 """
 
 
-def run_proxy_function(proxy_script: Path, tmp_path: Path, command: str) -> subprocess.CompletedProcess:
-    stubs = stub_folder(tmp_path, caddy="#!/bin/sh\nexit 0\n", systemctl="#!/bin/sh\nexit 0\n")
+def run_proxy_function(proxy_script: Path, tmp_path: Path, command: str, **stubs: str) -> subprocess.CompletedProcess:
+    stubs = stub_folder(tmp_path, **{"caddy": "#!/bin/sh\nexit 0\n", "systemctl": "#!/bin/sh\nexit 0\n", **stubs})
     library = tmp_path / "proxy-functions.sh"
     library.write_text(proxy_script.read_text().rsplit("case \"${1:-}\" in", 1)[0])
     setup = (f"source {library}; CADDYFILE={tmp_path / 'Caddyfile'}; CADDY_CHANGE={tmp_path / 'caddy-change'}; ")
     return subprocess.run(["bash", "-c", setup + command], capture_output=True, text=True,
-                          env={"PATH": f"{stubs}:/usr/bin:/bin", **SITE_VALUES})
+                          env={"PATH": f"{stubs}:/usr/bin:/bin", "STUB_LOG": str(tmp_path / "caddy.log"), **SITE_VALUES})
 
 
 def test_undo_puts_the_caddyfile_back_byte_for_byte_and_the_pushed_block_is_not_left_behind(proxy_script, tmp_path):
@@ -387,3 +387,56 @@ def test_the_laptop_side_refuses_a_site_value_that_is_not_plain(tmp_path, name, 
     assert result.returncode == 1
     assert f"{name} in" in result.stdout
     assert calls == ""
+
+
+LOGGING_CADDY = '#!/bin/sh\necho "caddy $*" >> "$STUB_LOG"\nif [ "$1" = validate ] && grep -q BROKEN "$3"; then exit 1; fi\n'
+LOGGING_SYSTEMCTL = '#!/bin/sh\necho "systemctl $*" >> "$STUB_LOG"\n'
+OLD_REFUSAL = 'respond "Photo Library is for the admin account only." 403'
+CURRENT_REFUSAL = 'respond "Starfire Photos is for the admin account only." 403'
+
+
+def add_logged_site(proxy_script: Path, tmp_path: Path, template: str) -> subprocess.CompletedProcess:
+    block = tmp_path / "photos-caddy-block"
+    block.write_text(template)
+    (tmp_path / "caddy.log").write_text("")
+    return run_proxy_function(proxy_script, tmp_path, f"add_site {block}", caddy=LOGGING_CADDY,
+                              systemctl=LOGGING_SYSTEMCTL)
+
+
+def with_old_refusal_in_the_marked_block(caddyfile: Path) -> str:
+    current = caddyfile.read_text()
+    marked = current.index("# >>> photos block")
+    caddyfile.write_text(current[:marked] + current[marked:].replace(CURRENT_REFUSAL, OLD_REFUSAL))
+    return current
+
+
+def test_an_existing_block_gets_the_current_refusal_and_nothing_else_changes(proxy_script, tmp_path):
+    caddyfile = tmp_path / "Caddyfile"
+    caddyfile.write_text(CADDYFILE_BEFORE + f"\nhttp://other.example.com {{\n    {OLD_REFUSAL}\n}}\n")
+    template = (DEPLOY / "Caddyfile.photos").read_text()
+    assert add_logged_site(proxy_script, tmp_path, template).returncode == 0
+    current = with_old_refusal_in_the_marked_block(caddyfile)
+    updated = add_logged_site(proxy_script, tmp_path, template)
+    assert updated.returncode == 0, updated.stdout + updated.stderr
+    assert caddyfile.read_text() == current
+    assert caddyfile.read_text().count(OLD_REFUSAL) == 1
+    assert "systemctl reload caddy" in (tmp_path / "caddy.log").read_text()
+    assert any(OLD_REFUSAL in backup.read_text()[backup.read_text().index("# >>> photos block"):]
+               for backup in tmp_path.glob("Caddyfile.bak-photos-*"))
+    assert not (tmp_path / "caddy-change").exists()
+    assert not (tmp_path / "photos-caddy-block").exists()
+    again = add_logged_site(proxy_script, tmp_path, template)
+    assert again.returncode == 0, again.stdout + again.stderr
+    assert caddyfile.read_text() == current
+    assert "systemctl reload caddy" not in (tmp_path / "caddy.log").read_text()
+
+
+def test_a_refusal_that_does_not_validate_leaves_the_existing_block_alone(proxy_script, tmp_path):
+    caddyfile = tmp_path / "Caddyfile"
+    caddyfile.write_text(CADDYFILE_BEFORE)
+    template = (DEPLOY / "Caddyfile.photos").read_text()
+    assert add_logged_site(proxy_script, tmp_path, template).returncode == 0
+    before = caddyfile.read_text()
+    broken = add_logged_site(proxy_script, tmp_path, template.replace("Starfire Photos is", "BROKEN Photos is"))
+    assert broken.returncode != 0
+    assert caddyfile.read_text() == before

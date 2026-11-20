@@ -34,7 +34,8 @@ and passes requests to that port.
                   or updates from the commit (default HEAD): code in /opt/photos,
                   env in /etc/photos/photos.env (kept if present), data folder
                   DATA_PATH, the ufw lock, docker compose build and up, then the
-                  sign-in page and the marked Caddy block in the proxy container
+                  sign-in page and the marked Caddy block in the proxy container (an
+                  existing block is kept, only its 403 text is brought up to date)
   check           container health, the lock rule, sign-in redirects through Caddy,
                   and that the proxy container reaches the app signed in (200) and
                   not without a user (401)
@@ -359,6 +360,7 @@ BACKUP_POINTER="$STATE/photos-last-backup"
 FRESH_BACKUP_MINUTES=60
 BLOCK_BEGIN="# >>> photos block, added and removed by the photos deploy.sh"
 BLOCK_END="# <<< photos block"
+REFUSAL_PATTERN='^[[:space:]]*respond ".*" 403$'
 CADDY_CHANGE="$STATE/photos-caddy-change"
 SIGNIN_BEFORE="$STATE/photos-signin-before"
 OTHER_SITES="${OTHER_SITES-}"
@@ -418,11 +420,43 @@ reload_or_restore() {
   return 1
 }
 
+caddyfile_with_refusal() {
+  REFUSAL="$1" awk -v begin="$BLOCK_BEGIN" -v end="$BLOCK_END" -v pattern="$REFUSAL_PATTERN" '
+    $0 == begin { inside = 1 }
+    $0 == end { inside = 0 }
+    inside && $0 ~ pattern { print ENVIRON["REFUSAL"]; next }
+    { print }
+  ' "$CADDYFILE"
+}
+
+update_refusal() {
+  local block="$1" refusal work stamp backup
+  refusal="$(grep -m 1 -E -- "$REFUSAL_PATTERN" <<< "$block" || true)"
+  work="$(mktemp)"
+  if [ -n "$refusal" ]; then caddyfile_with_refusal "$refusal" > "$work"; else cat "$CADDYFILE" > "$work"; fi
+  if cmp -s "$work" "$CADDYFILE"; then
+    rm -f "$work"
+    echo "caddy: a $SITE_HOST block is already present with the current 403 text, left as is"
+    return 0
+  fi
+  stamp="$(date +%Y%m%d-%H%M%S)"
+  backup="$CADDYFILE.bak-photos-$stamp"
+  cp -a "$CADDYFILE" "$backup"
+  cat "$work" > "$CADDYFILE"
+  rm -f "$work"
+  reload_or_restore "$backup"
+  echo "caddy: brought the 403 text of the $SITE_HOST block up to date (earlier file: $backup)"
+}
+
 add_site() {
   local block_file="$1" stamp backup block
   rm -f "$CADDY_CHANGE"
   block="$(sed "s/__PORT__/$PORT/g" "$block_file" | fill_in_site_values)"
   rm -f "$block_file"
+  if [ "$(block_count)" = 1 ]; then
+    update_refusal "$block"
+    return
+  fi
   if [ "$(block_count)" != 0 ] || grep -qxF "http://$SITE_HOST {" "$CADDYFILE"; then
     echo "caddy: a $SITE_HOST block is already present, left as is"
     return 0
