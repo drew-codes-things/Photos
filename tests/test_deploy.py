@@ -83,6 +83,15 @@ def test_the_caddy_block_is_admin_only_and_sets_its_own_user_header():
     assert "root * /srv/signin/photos" in block
 
 
+def test_the_caddy_refusal_names_starfire_photos():
+    assert 'respond "Starfire Photos is for the admin account only." 403' in (DEPLOY / "Caddyfile.photos").read_text()
+
+
+def test_the_sign_in_page_is_built_as_starfire_photos():
+    script = (REPO / "deploy.sh").read_text()
+    assert "--first Starfire --second Photos" in script
+
+
 def test_the_port_agrees_everywhere(app_script, proxy_script):
     assert "PORT=5004" in app_script.read_text()
     assert "PORT=5004" in proxy_script.read_text()

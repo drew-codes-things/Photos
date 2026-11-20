@@ -8,6 +8,13 @@ def photo(owner):
     return owner.upload(jpeg_bytes(taken="2020:01:01 12:00:00"), name="Café au lait.JPG").get_json()["item"]
 
 
+def test_the_page_is_named_starfire_photos(owner):
+    page = owner.get("/").get_data(as_text=True)
+    assert "<title>Starfire Photos</title>" in page
+    assert 'aria-label="Starfire Photos home"' in page
+    assert 'Starfire <span class="brand-accent">Photos</span>' in page
+
+
 def test_health_answers_without_signing_in(client):
     assert client.get("/api/health").get_json() == {"ok": True}
 

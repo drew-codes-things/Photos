@@ -1,6 +1,6 @@
 <div align="center">
 
-# Photo Library
+# Starfire Photos
 
 **Your own free take on Google Photos. Upload photos and videos from a phone browser, see them on a timeline by the day they were taken, and keep albums, favourites and a bin, all on your own machine.**
 
@@ -11,7 +11,7 @@
 
 </div>
 
-![Photo Library on a laptop and a phone](screenshot.png)
+![Starfire Photos on a laptop and a phone](screenshot.png)
 
 ## Overview
 
@@ -44,7 +44,7 @@ Open http://127.0.0.1:8098 and make the owner account (see below). If you set `A
 
 ### First run and sign-in
 
-Photo Library has its own sign-in, switched on by default (`AUTH_MODE=builtin`).
+Starfire Photos has its own sign-in, switched on by default (`AUTH_MODE=builtin`).
 There is one owner account and no sign-up page.
 
 1. Start it (`.venv/bin/python -m photos`) and open
@@ -163,9 +163,9 @@ File names from the phone are only ever shown and used as the download name; not
 
 ## Running it on a server
 
-On that server Photos trusts the gate instead of its own sign-in: `deploy/photos.env` sets `AUTH_MODE=proxy` and `TRUSTED_PROXIES` to the proxy container's address (`PROXY_ADDRESS` from `deploy/site.env`).
+On that server Starfire Photos trusts the gate instead of its own sign-in: `deploy/photos.env` sets `AUTH_MODE=proxy` and `TRUSTED_PROXIES` to the proxy container's address (`PROXY_ADDRESS` from `deploy/site.env`).
 
-`deploy.sh` runs Photos in Docker in one Proxmox container (the app container) and puts it behind the starfire admin login in the container that runs Caddy (the proxy container). It was tried for real in a test round (backup, apply, check, uploads, restart, undo, twice); the 119 MP WebP peaked at 2.0 GB in the container.
+`deploy.sh` runs Starfire Photos in Docker in one Proxmox container (the app container) and puts it behind the starfire admin login in the container that runs Caddy (the proxy container). It was tried for real in a test round (backup, apply, check, uploads, restart, undo, twice); the 119 MP WebP peaked at 2.0 GB in the container.
 
 The values for your own setup live in `deploy/site.env`, which git ignores. Copy `deploy/site.env.example` and fill it in:
 
@@ -173,7 +173,7 @@ The values for your own setup live in `deploy/site.env`, which git ignores. Copy
 |---|---|
 | `PROXMOX` | The ssh host name of the Proxmox machine. |
 | `APP_CT` / `PROXY_CT` | The numbers of the app container (Docker) and the proxy container (Caddy). |
-| `SITE_HOST` | The host name Photos is served on, like `photos.example.com`. |
+| `SITE_HOST` | The host name Starfire Photos is served on, like `photos.example.com`. |
 | `SIGNED_IN_USER` | The starfire admin account name; Caddy passes it on and it becomes `ALLOWED_USERS`. |
 | `APP_ADDRESS` | The app container's LAN address; the port is published only there. |
 | `PROXY_ADDRESS` | The proxy container's LAN address, the only one the app trusts and the firewall lets in. |

@@ -553,7 +553,7 @@ deploy_code() {
   in_proxy fresh
   work="$(mktemp -d)"
   git -C "$REPO" archive --format=tar.gz -o "$work/code.tgz" "$commit"
-  python3 "$SITE_SIGNIN/build.py" --first Photo --second Library --tagline "Sign in to reach your photos." \
+  python3 "$SITE_SIGNIN/build.py" --first Starfire --second Photos --tagline "Sign in to reach your photos." \
     --icon "$REPO/photos/static/icon.svg" --out "$work/signin"
   tar -czf "$work/signin.tgz" -C "$work/signin" .
   push_to "$APP_CT" "$work/code.tgz" /root/photos-code.tgz 600

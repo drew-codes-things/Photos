@@ -16,7 +16,7 @@ from .uploads import MAX_CHUNK_BYTES, OffsetMismatch, Uploads
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 REQUEST_SLACK_BYTES = 64 * 1024
-APP_NAME = "Photos"
+APP_NAME = "Starfire Photos"
 MAX_REQUEST_BYTES = MAX_CHUNK_BYTES + REQUEST_SLACK_BYTES
 CLIENT_CHUNK_BYTES = 4 * 1024 * 1024
 CSRF_HEADER = "X-CSRF-Token"
