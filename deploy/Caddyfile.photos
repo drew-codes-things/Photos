@@ -28,7 +28,7 @@ http://__SITE_HOST__ {
 			}
 			@not_admin status 403
 			handle_response @not_admin {
-				respond "Starfire Photos is for the admin account only." 403
+				respond "Starfire Photos is only for the admin account, so this account cannot open it. Sign in with the admin account instead, or ask the admin for what you need." 403
 			}
 		}
 		reverse_proxy __APP_ADDRESS__:__PORT__ {

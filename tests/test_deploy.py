@@ -84,7 +84,7 @@ def test_the_caddy_block_is_admin_only_and_sets_its_own_user_header():
 
 
 def test_the_caddy_refusal_names_starfire_photos():
-    assert 'respond "Starfire Photos is for the admin account only." 403' in (DEPLOY / "Caddyfile.photos").read_text()
+    assert 'respond "Starfire Photos is only for the admin account, so this account cannot open it. Sign in with the admin account instead, or ask the admin for what you need." 403' in (DEPLOY / "Caddyfile.photos").read_text()
 
 
 def test_the_sign_in_page_is_built_as_starfire_photos():
@@ -392,7 +392,7 @@ def test_the_laptop_side_refuses_a_site_value_that_is_not_plain(tmp_path, name, 
 LOGGING_CADDY = '#!/bin/sh\necho "caddy $*" >> "$STUB_LOG"\nif [ "$1" = validate ] && grep -q BROKEN "$3"; then exit 1; fi\n'
 LOGGING_SYSTEMCTL = '#!/bin/sh\necho "systemctl $*" >> "$STUB_LOG"\n'
 OLD_REFUSAL = 'respond "Photo Library is for the admin account only." 403'
-CURRENT_REFUSAL = 'respond "Starfire Photos is for the admin account only." 403'
+CURRENT_REFUSAL = 'respond "Starfire Photos is only for the admin account, so this account cannot open it. Sign in with the admin account instead, or ask the admin for what you need." 403'
 
 
 def add_logged_site(proxy_script: Path, tmp_path: Path, template: str) -> subprocess.CompletedProcess:
@@ -440,3 +440,11 @@ def test_a_refusal_that_does_not_validate_leaves_the_existing_block_alone(proxy_
     broken = add_logged_site(proxy_script, tmp_path, template.replace("Starfire Photos is", "BROKEN Photos is"))
     assert broken.returncode != 0
     assert caddyfile.read_text() == before
+
+
+def test_the_caddy_refusal_says_who_the_app_is_for_and_what_to_do_instead():
+    refusal = re.search(r'respond "([^"]+)" 403', (DEPLOY / "Caddyfile.photos").read_text()).group(1)
+    assert refusal.startswith("Starfire Photos is only for the admin account")
+    assert "Sign in with the admin account instead" in refusal
+    assert "ask the admin" in refusal
+    assert len(refusal) < 200
